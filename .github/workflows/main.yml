@@ -1,0 +1,41 @@
+name: Build BeatMorph VST3
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libjack-jackd2-dev libcurl4-openssl-dev \
+            libfreetype6-dev libx11-dev libxcomposite-dev libxcursor-dev libxext-dev \
+            libxinerama-dev libxrandr-dev libxrender-dev libglu1-mesa-dev mesa-common-dev
+
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Collect VST3
+        shell: bash
+        run: |
+          mkdir out
+          cp -R build/BeatMorph_artefacts/Release/VST3/*.vst3 out/ 2>/dev/null || \
+          cp -R build/BeatMorph_artefacts/VST3/*.vst3 out/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BeatMorph-VST3-${{ matrix.os }}
+          path: out
